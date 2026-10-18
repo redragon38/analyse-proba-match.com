@@ -31,7 +31,8 @@ const hash = async (file) =>
 const waitResult = async (file) => {
   for (let i = 0; i < 100; i++) {
     try {
-      return JSON.parse((await readFile(file, "utf8")).replace(/^\uFEFF/, ""));
+      const raw = await readFile(file, "utf8");
+      return JSON.parse(raw.charCodeAt(0) === 65279 ? raw.slice(1) : raw);
     } catch {
       await new Promise((r) => setTimeout(r, 300));
     }

@@ -319,14 +319,17 @@ export async function launchPortableUpdate(
       await rm(ready, { force: true });
       return;
     } catch {}
+    let result: any;
     try {
-      await access(resultFile);
+      const raw = await readFile(resultFile, "utf8");
+      result = JSON.parse(raw.charCodeAt(0) === 65279 ? raw.slice(1) : raw);
+    } catch {}
+    if (result?.ok === true) return;
+    if (result?.ok === false)
       throw Error(
-        "Le programme Windows a refusé la mise à jour. L’application reste ouverte ; consultez update-helper.log dans le dossier updates.",
+        "Le programme Windows a refusé la mise à jour : " +
+          String(result.message ?? "cause inconnue").slice(0, 500),
       );
-    } catch (e) {
-      if (e instanceof Error && !("code" in e)) throw e;
-    }
     if (exitCode !== undefined) {
       try {
         await access(ready);
