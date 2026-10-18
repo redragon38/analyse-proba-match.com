@@ -295,7 +295,7 @@ export async function launchPortableUpdate(
           ).toString("base64"),
         ],
         {
-          detached: true,
+          detached: false,
           stdio: ["ignore", log.fd, log.fd],
           windowsHide: true,
           cwd: directory,

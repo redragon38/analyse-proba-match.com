@@ -1,9 +1,10 @@
 import { build } from "esbuild";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import {
   mkdtemp,
   copyFile,
   readFile,
+  writeFile,
   readdir,
   rm,
   stat,
@@ -64,22 +65,39 @@ try {
     await copyFile(replacement, staged);
     const oldHash = await hash(target);
     const newHash = await hash(staged);
-    try {
-      await launchPortableUpdate(
-        target,
-        staged,
-        valid ? newHash : "0".repeat(64),
-        "0.2.1",
-        dir,
-        2147483646,
+    if (valid) {
+      const launcher = join(dir, "launch.mjs");
+      await writeFile(
+        launcher,
+        `import {launchPortableUpdate} from ${JSON.stringify(pathToFileURL(moduleFile).href)};
+await launchPortableUpdate(${JSON.stringify(target)},${JSON.stringify(staged)},${JSON.stringify(newHash)},'0.2.1',${JSON.stringify(dir)},process.pid);
+process.exit(0);
+`,
       );
-    } catch (e) {
-      console.error(
-        await readFile(join(dir, "update-helper.log"), "utf8").catch(
-          () => "(journal absent)",
-        ),
-      );
-      if (valid) throw e;
+      await new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [launcher], { stdio: "inherit" });
+        child.once("error", reject);
+        child.once("exit", (code) =>
+          code === 0
+            ? resolve()
+            : reject(Error("Programme parent : code " + code)),
+        );
+      });
+    } else {
+      try {
+        await launchPortableUpdate(
+          target,
+          staged,
+          "0".repeat(64),
+          "0.2.1",
+          dir,
+          2147483646,
+        );
+      } catch {
+        console.log(
+          "Le contrôle de démarrage a refusé l’empreinte incorrecte.",
+        );
+      }
     }
     const result = await waitResult(join(dir, "install-result.json"));
     assert.equal(result.ok, valid);
