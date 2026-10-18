@@ -172,3 +172,32 @@ it("conserve GA4 réussi lorsqu’un rapport secondaire échoue et distingue CTR
   expect(data.search.changes.ctrPoints).toBe(0);
   expect(data.search.changes.positionDelta).toBe(0);
 });
+
+it("conserve les totaux courants si la période de comparaison Search Console est refusée", async () => {
+  const previousEnd = periods(365).previousEnd;
+  const auth = {
+    request: vi.fn(async (_url: string, body: any) => {
+      if (body.endDate === previousEnd) throw Error("Date hors couverture");
+      return {
+        rows: [
+          {
+            keys: ["observé"],
+            clicks: 12,
+            impressions: 100,
+            ctr: 0.12,
+            position: 3,
+          },
+        ],
+      };
+    }),
+  };
+  const data = await sync(
+    auth as any,
+    { ...site, searchProperty: "sc-domain:example.com" },
+    365,
+  );
+  expect(data.search.totals.clicks).toBe(12);
+  expect(data.search.changes).toBeNull();
+  expect(data.search.coverage.previousAvailable).toBe(false);
+  expect(data.errors[0].source).toBe("Search Console comparaison");
+});

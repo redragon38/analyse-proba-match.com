@@ -83,7 +83,9 @@ export async function sync(auth: GoogleAuth, site: Site, days: number) {
           startRow,
           dataState: "final",
         });
+      let previousAvailable = true;
       const table = async (dimension: string, previous = false) => {
+        if (previous && !previousAvailable) return { rows: [], capped: false };
         const rows: any[] = [];
         let capped = false;
         for (let offset = 0; offset < 25000; offset += 5000) {
@@ -100,11 +102,20 @@ export async function sync(auth: GoogleAuth, site: Site, days: number) {
         }
         return { rows, capped };
       };
-      const [totals, previous, daily] = await Promise.all([
+      const [totals, daily] = await Promise.all([
         query(period.start, period.end),
-        query(period.previousStart, period.previousEnd),
         query(period.start, period.end, ["date"]),
       ]);
+      let previous: any = {};
+      try {
+        previous = await query(period.previousStart, period.previousEnd);
+      } catch (e) {
+        previousAvailable = false;
+        result.errors.push({
+          source: "Search Console comparaison",
+          message: "Période précédente indisponible : " + (e as Error).message,
+        });
+      }
       const queries = await table("query");
       const previousQueries = await table("query", true);
       const pages = await table("page");
@@ -142,6 +153,7 @@ export async function sync(auth: GoogleAuth, site: Site, days: number) {
           anonymousQueriesExcluded: true,
           missingRowsAreNotZero: true,
           aggregationType: totals.responseAggregationType ?? null,
+          previousAvailable,
         },
         changes:
           current && old
