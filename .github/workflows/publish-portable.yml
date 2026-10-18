@@ -1,0 +1,45 @@
+name: Publish Windows portable
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: publish-windows-portable
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELECTRON_BUILDER_COMPRESSION_LEVEL: '3'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      - run: npm run verify
+      - name: Build Windows portable
+        run: npx --no-install electron-builder --win portable --x64
+      - name: Create checksum
+        working-directory: release
+        run: sha256sum SEO-Control-Studio-0.1.0-Portable.exe > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SEO-Control-Studio-Windows-portable
+          path: |
+            release/SEO-Control-Studio-0.1.0-Portable.exe
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view v0.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload v0.1.0 release/SEO-Control-Studio-0.1.0-Portable.exe release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create v0.1.0 release/SEO-Control-Studio-0.1.0-Portable.exe release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'SEO Control Studio 0.1.0 — Préversion Windows' --prerelease --notes-file docs/RELEASE_NOTES_0.1.0.md
+          fi
