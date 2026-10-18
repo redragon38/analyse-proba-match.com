@@ -26,6 +26,11 @@ const waitResult = async (file) => {
       await new Promise((r) => setTimeout(r, 300));
     }
   }
+  const log = await readFile(
+    join(file, "..", "update-helper.log"),
+    "utf8",
+  ).catch(() => "(journal absent)");
+  console.error(log);
   throw Error("Le programme de mise à jour n’a pas terminé.");
 };
 try {

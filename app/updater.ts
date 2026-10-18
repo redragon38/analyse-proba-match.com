@@ -7,6 +7,7 @@ import {
   access,
   stat,
   readFile,
+  open,
 } from "node:fs/promises";
 import { createWriteStream, constants } from "node:fs";
 import { join, dirname, isAbsolute, extname } from "node:path";
@@ -266,27 +267,37 @@ export async function launchPortableUpdate(
     }),
     "utf8",
   );
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-NonInteractive",
-        "-ExecutionPolicy",
-        "RemoteSigned",
-        "-File",
-        script,
-        "-ConfigPath",
-        config,
-      ],
-      { detached: true, stdio: "ignore", windowsHide: true, cwd: directory },
-    );
-    child.once("error", reject);
-    child.once("spawn", () => {
-      child.unref();
-      resolve();
+  const log = await open(join(directory, "update-helper.log"), "a");
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-NonInteractive",
+          "-ExecutionPolicy",
+          "RemoteSigned",
+          "-File",
+          script,
+          "-ConfigPath",
+          config,
+        ],
+        {
+          detached: true,
+          stdio: ["ignore", log.fd, log.fd],
+          windowsHide: true,
+          cwd: directory,
+        },
+      );
+      child.once("error", reject);
+      child.once("spawn", () => {
+        child.unref();
+        resolve();
+      });
     });
-  });
+  } finally {
+    await log.close();
+  }
 }
 export class UpdateManager {
   state: UpdateState;
