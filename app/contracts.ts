@@ -85,6 +85,7 @@ export const Request = z.discriminatedUnion("action", [
     value: z.string().max(4096),
   }),
   z.object({ action: z.literal("google.connect") }),
+  z.object({ action: z.literal("google.import") }),
   z.object({ action: z.literal("google.disconnect") }),
   z.object({ action: z.literal("google.properties") }),
   z.object({

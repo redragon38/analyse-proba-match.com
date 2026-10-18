@@ -1,3 +1,12 @@
+## Correctif 0.1.1 — OAuth Google
+
+- Erreur signalée par l’utilisateur : retour dans l’application après consentement Google, puis HTTP 400 générique. Cause exacte non accessible dans la version initiale.
+- Ajout du diagnostic OAuth sans exposer les réponses brutes ni les secrets.
+- Import local du JSON Desktop, chiffrement de la configuration et association stricte client_id/client_secret ; utilisation lors de l’échange et du refresh. Les JSON Web et comptes de service sont refusés.
+- PKCE et state conservés ; callback consommable une seule fois, nettoyage du timeout et du serveur, traitement de l’échec d’ouverture du navigateur.
+- 47 tests unitaires/intégration et 2 parcours Electron réussis après correction, dont un véritable serveur loopback avec Google et le navigateur simulés. TypeScript et build réussis. Consentement Google réel non vérifié.
+- Documentation de mise à jour : docs/RELEASE_NOTES_0.1.1.md et GOOGLE_SETUP.md.
+
 # État du développement — 18 octobre 2026
 
 **Version initiale 0.1.0. Le cahier des charges complet n’est pas terminé.**

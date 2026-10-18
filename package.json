@@ -1,7 +1,7 @@
 {
   "name": "seo-control-studio",
-  "version": "0.1.0",
-  "description": "Studio SEO local pour Windows — sources Google et audits techniques",
+  "version": "0.1.1",
+  "description": "Studio SEO local pour Windows \u2014 sources Google et audits techniques",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "npm run build:electron && concurrently -k \"vite\" \"wait-on http://127.0.0.1:5173 && cross-env STUDIO_DEV=1 electron .\"",

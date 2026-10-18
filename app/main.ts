@@ -8,7 +8,7 @@ import { backup } from "node:sqlite";
 import { z } from "zod";
 import { Request, SiteInput, SettingsInput } from "./contracts";
 import { Store } from "./database";
-import { Vault, GoogleAuth } from "./auth";
+import { Vault, GoogleAuth, parseGoogleDesktopClient } from "./auth";
 import { Crawler, analyze } from "./seo";
 import { auditLighthouse } from "./lighthouse";
 import robotsParser from "robots-parser";
@@ -110,12 +110,55 @@ async function handle(input: unknown) {
       webURL(endpoint.origin);
       if (req.settings.autoStart !== store.settings().autoStart)
         app.setLoginItemSettings({ openAtLogin: req.settings.autoStart });
-      store.setSettings(req.settings);
+      const nextSettings = {
+        ...req.settings,
+        googleClientId: req.settings.googleClientId.trim(),
+      };
+      if (
+        nextSettings.googleClientId !== store.settings().googleClientId.trim()
+      ) {
+        if (auth.connecting)
+          throw Error(
+            "Terminez la connexion en cours avant de changer le client OAuth.",
+          );
+        vault.remove("google");
+      }
+      store.setSettings(nextSettings);
       return true;
     }
     case "secret.save":
       vault.set(req.kind, req.value);
       return true;
+    case "google.import": {
+      if (auth.connecting)
+        throw Error(
+          "Terminez la connexion en cours avant de changer le client OAuth.",
+        );
+      if (!vault.available())
+        throw Error(
+          "Stockage sécurisé du système requis pour importer la configuration Google.",
+        );
+      const result = await dialog.showOpenDialog(win, {
+        title: "Importer un client OAuth Google — Application de bureau",
+        properties: ["openFile"],
+        filters: [{ name: "Configuration OAuth Google", extensions: ["json"] }],
+      });
+      if (result.canceled || !result.filePaths[0]) return null;
+      const info = await import("node:fs/promises").then((fs) =>
+        fs.stat(result.filePaths[0]),
+      );
+      if (info.size > 65536)
+        throw Error("Fichier OAuth trop volumineux (64 Ko maximum).");
+      const client = parseGoogleDesktopClient(
+        await readFile(result.filePaths[0], "utf8"),
+      );
+      vault.set("google-client", JSON.stringify(client));
+      const settings = store.settings();
+      store.setSettings({ ...settings, googleClientId: client.client_id });
+      vault.remove("google");
+      // The renderer receives only a status message; never the imported secret.
+      return "Configuration OAuth Desktop importée dans le coffre chiffré. Cliquez sur Enregistrer et connecter.";
+    }
     case "google.connect":
       return auth.connect();
     case "google.disconnect":

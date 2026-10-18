@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      ELECTRON_BUILDER_COMPRESSION_LEVEL: '3'
+      ELECTRON_BUILDER_COMPRESSION_LEVEL: "3"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,12 +25,12 @@ jobs:
         run: npx --no-install electron-builder --win portable --x64
       - name: Create checksum
         working-directory: release
-        run: sha256sum SEO-Control-Studio-0.1.0-Portable.exe > SHA256SUMS.txt
+        run: sha256sum SEO-Control-Studio-*-Portable.exe > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: SEO-Control-Studio-Windows-portable
           path: |
-            release/SEO-Control-Studio-0.1.0-Portable.exe
+            release/SEO-Control-Studio-*-Portable.exe
             release/SHA256SUMS.txt
           if-no-files-found: error
       - name: Publish prerelease
@@ -38,8 +38,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view v0.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload v0.1.0 release/SEO-Control-Studio-0.1.0-Portable.exe release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+          version="$(node -p 'require("./package.json").version')"
+          tag="v${version}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" release/SEO-Control-Studio-*-Portable.exe release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create v0.1.0 release/SEO-Control-Studio-0.1.0-Portable.exe release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'SEO Control Studio 0.1.0 — Préversion Windows' --prerelease --notes-file docs/RELEASE_NOTES_0.1.0.md
+            gh release create "$tag" release/SEO-Control-Studio-*-Portable.exe release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "SEO Control Studio ${version} — Préversion Windows" --prerelease --notes-file "docs/RELEASE_NOTES_${version}.md"
           fi

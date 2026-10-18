@@ -136,7 +136,9 @@ function App() {
       const result = await request(input);
       const refreshed = await refresh();
       if (
-        (input.action === "settings.save" || input.action === "restore") &&
+        (input.action === "settings.save" ||
+          input.action === "restore" ||
+          input.action === "google.import") &&
         refreshed
       )
         setSettings(refreshed.settings);
@@ -501,7 +503,7 @@ function App() {
         <div className="profile">
           <div className="profile-avatar">S</div>
           <div>
-            Espace personnel<small>SEO Control Studio · 0.1</small>
+            Espace personnel<small>SEO Control Studio · 0.1.1</small>
           </div>
           <button
             title="Changer de thème"
@@ -1518,8 +1520,10 @@ function App() {
                   Créez un projet Google Cloud, activez Search Console API,
                   Analytics Data API et Analytics Admin API. Configurez le
                   consentement et un client OAuth « Application de bureau »,
-                  puis indiquez son identifiant public ici. La validation réelle
-                  exige votre compte et ses permissions.
+                  puis importez son fichier JSON avec le bouton ci-dessous. Vous
+                  pouvez aussi saisir son identifiant public ; si Google exige
+                  le client_secret associé, l’import JSON le conserve dans le
+                  coffre chiffré, jamais dans le code ou le renderer.
                 </p>
                 <label>
                   Identifiant client OAuth public
@@ -1545,6 +1549,9 @@ function App() {
                     : "non connecté"}
                 </p>
                 <div className="actions">
+                  {button("Importer le JSON OAuth Desktop", {
+                    action: "google.import",
+                  })}
                   {button("Guide Google Cloud", {
                     action: "external",
                     url: "https://console.cloud.google.com/",
