@@ -215,6 +215,7 @@ try {
   if ((Get-FileHash -LiteralPath $c.staged -Algorithm SHA256).Hash.ToLowerInvariant() -ne $c.hash) { throw 'Empreinte de mise à jour invalide.' }
   @{ready=$true} | ConvertTo-Json | Set-Content -LiteralPath $c.ready -Encoding UTF8
   if (Get-Process -Id $c.pid -ErrorAction SilentlyContinue) { Wait-Process -Id $c.pid -Timeout 60 -ErrorAction SilentlyContinue }
+  if (Get-Process -Id $c.pid -ErrorAction SilentlyContinue) { throw 'Application encore active : remplacement annulé.' }
   for ($i=0; $i -lt 30; $i++) {
     try { Move-Item -LiteralPath $c.target -Destination $backup -ErrorAction Stop; $moved=$true; break } catch { if ($i -eq 29) { throw }; Start-Sleep -Seconds 1 }
   }
@@ -283,10 +284,15 @@ export async function launchPortableUpdate(
           "-NonInteractive",
           "-ExecutionPolicy",
           "RemoteSigned",
-          "-File",
-          script,
-          "-ConfigPath",
-          config,
+          "-EncodedCommand",
+          Buffer.from(
+            "$parameters = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" +
+              Buffer.from(JSON.stringify({ script, config }), "utf8").toString(
+                "base64",
+              ) +
+              "')) | ConvertFrom-Json; & $parameters.script -ConfigPath $parameters.config",
+            "utf16le",
+          ).toString("base64"),
         ],
         {
           detached: true,
@@ -321,10 +327,16 @@ export async function launchPortableUpdate(
     } catch (e) {
       if (e instanceof Error && !("code" in e)) throw e;
     }
-    if (exitCode !== undefined)
+    if (exitCode !== undefined) {
+      try {
+        await access(ready);
+        await rm(ready, { force: true });
+        return;
+      } catch {}
       throw Error(
         `Le programme de mise à jour s’est arrêté avant sa confirmation (code ${exitCode}). Consultez update-helper.log.`,
       );
+    }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   throw Error(
