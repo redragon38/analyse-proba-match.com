@@ -1,3 +1,5 @@
+import { BatchRunner, auditPlan } from "./batch";
+import { UpdateManager } from "./updater";
 import { app, BrowserWindow, ipcMain, dialog, Notification } from "electron";
 import { join, resolve } from "node:path";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -29,6 +31,9 @@ let store: Store;
 let vault: Vault;
 let auth: GoogleAuth;
 const crawler = new Crawler();
+const batch = new BatchRunner();
+let updater: UpdateManager;
+let closing = false;
 let timer: NodeJS.Timeout;
 let scheduling = false;
 const lastRun = new Map<string, number>();
@@ -59,11 +64,93 @@ async function synchronize(siteId: string, days: number) {
   }
   return record;
 }
-async function handle(input: unknown) {
+async function handle(input: unknown, internal = false): Promise<any> {
   const req = Request.parse(input);
+  if (
+    !internal &&
+    batch.state.running &&
+    [
+      "sync",
+      "crawl",
+      "pagespeed",
+      "lighthouse",
+      "inspect",
+      "analytics.realtime",
+      "competitor.audit",
+      "site.delete",
+      "site.save",
+      "restore",
+      "google.disconnect",
+      "google.import",
+      "settings.save",
+    ].includes(req.action)
+  )
+    throw Error(
+      "Un bilan complet est en cours. Attendez sa fin ou annulez les étapes restantes.",
+    );
   switch (req.action) {
+    case "audit.all": {
+      if (crawler.state.running) throw Error("Un crawl est déjà en cours.");
+      const site = store.site(req.siteId);
+      const competitors = req.includeCompetitors
+        ? store
+            .lists()
+            .filter((l) => l.siteId === site.id && l.kind === "competitor")
+            .map((l) => String(l.value))
+        : [];
+      return batch.start(
+        site.id,
+        auditPlan(
+          site,
+          req.days,
+          req.maxPages,
+          req.delay,
+          vault.has("google"),
+          req.includeLighthouse,
+          competitors,
+        ),
+        (input) => handle(input, true),
+        (state) => {
+          if (!closing) store.add(site.id, "batch", state);
+        },
+      );
+    }
+    case "audit.cancel":
+      batch.cancel();
+      crawler.control("cancel");
+      return "Annulation demandée. L’appel API ou Lighthouse en cours peut prendre le temps de se terminer.";
+    case "update.check":
+      return updater.check();
+    case "update.download":
+      return updater.download();
+    case "update.install": {
+      if (
+        batch.state.running ||
+        crawler.state.running ||
+        scheduling ||
+        auth.connecting
+      )
+        throw Error(
+          "Terminez les analyses et connexions en cours avant de mettre à jour.",
+        );
+      const answer = await dialog.showMessageBox(win, {
+        type: "question",
+        message: "Installer la mise à jour vérifiée et redémarrer ?",
+        detail:
+          "Le portable sera remplacé. Les données et clés restent dans votre dossier utilisateur. Une copie de l’ancien exécutable sera conservée.",
+        buttons: ["Annuler", "Mettre à jour et redémarrer"],
+        defaultId: 0,
+        cancelId: 0,
+      });
+      if (answer.response !== 1) return null;
+      await updater.install();
+      setTimeout(() => app.quit(), 300);
+      return "Redémarrage pour appliquer la mise à jour.";
+    }
     case "state":
       return {
+        batch: batch.snapshot(),
+        updater: updater.state,
         sites: store.sites(),
         records: store
           .records()
@@ -214,6 +301,10 @@ async function handle(input: unknown) {
       const key = vault.get("pagespeed");
       if (key) u.searchParams.set("key", key);
       const data = await apiJSON(u.href);
+      if (!data.lighthouseResult || data.lighthouseResult.runtimeError)
+        throw Error(
+          "PageSpeed n’a pas pu produire de rapport Lighthouse exploitable. Vérifiez l’URL et réessayez.",
+        );
       return store.add(req.siteId, "pagespeed", {
         strategy: req.strategy,
         lab: data.lighthouseResult,
@@ -525,11 +616,17 @@ function safeSite(s: any) {
     analyticsProperty: s.analyticsProperty,
   };
 }
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const dir = app.getPath("userData");
   mkdirSync(dir, { recursive: true });
   store = new Store(join(dir, "studio.sqlite"));
   vault = new Vault(join(dir, "vault"));
+  updater = new UpdateManager(
+    app.getVersion(),
+    join(dir, "updates"),
+    app.isPackaged ? process.env.PORTABLE_EXECUTABLE_FILE : undefined,
+  );
+  await updater.recoverResult();
   auth = new GoogleAuth(vault, () => store.settings().googleClientId);
   win = new BrowserWindow({
     width: 1440,
@@ -572,7 +669,7 @@ app.whenReady().then(() => {
     win.loadURL("http://127.0.0.1:5173");
   else win.loadFile(join(here, "../dist/index.html"));
   timer = setInterval(async () => {
-    if (scheduling || !vault.has("google")) return;
+    if (scheduling || batch.state.running || !vault.has("google")) return;
     scheduling = true;
     try {
       for (const site of store.sites()) {
@@ -603,6 +700,8 @@ app.whenReady().then(() => {
 });
 app.on("window-all-closed", () => app.quit());
 app.on("before-quit", () => {
+  closing = true;
+  batch.cancel();
   clearInterval(timer);
   crawler.control("cancel");
   store?.close();

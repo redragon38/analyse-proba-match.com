@@ -1,3 +1,7 @@
+## Actualisation 0.2.0
+
+Le détail ci-dessous décrit historiquement la version initiale. Depuis 0.2.0, les tableaux Search Console courants et précédents sont paginés symétriquement jusqu’à 25 000 lignes ; GA4 jusqu’à 10 000 lignes par rapport avec conservation des réussites partielles. Les métriques d’engagement, les unités et les avertissements de qualité ont été enrichis. Le bilan groupé ne lance pas l’IA payante ni les imports manuels. Les mises à jour intégrées concernent le portable Windows original, avec vérification SHA-256 mais sans signature d’éditeur. Voir docs/RELEASE_NOTES_0.2.0.md pour le comportement final. Les autres fonctions non terminées de la version initiale restent non terminées.
+
 # Limites réelles
 
 | Module            | Implémentation et limites                                                                                                                                                                                                                                                                                                                                                                                              |

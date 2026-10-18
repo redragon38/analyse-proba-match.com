@@ -217,17 +217,15 @@ it("réalise le callback loopback, valide le state et transmet PKCE et le secret
       }).on("error", reject);
     });
   let authorization: URL | undefined;
-  const fetchMock = vi
-    .spyOn(globalThis, "fetch")
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          access_token: "test-access",
-          refresh_token: "test-refresh",
-          expires_in: 3600,
-        }),
-      ),
-    );
+  const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        access_token: "test-access",
+        refresh_token: "test-refresh",
+        expires_in: 3600,
+      }),
+    ),
+  );
   vi.mocked(shell.openExternal).mockImplementation(async (raw) => {
     authorization = new URL(raw);
     expect(authorization.searchParams.has("client_secret")).toBe(false);

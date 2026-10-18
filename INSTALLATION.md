@@ -1,3 +1,9 @@
+## Nouveautés 0.2.0
+
+Après un premier téléchargement manuel de la version 0.2.0, ouvrez Paramètres → Chercher les mises à jour pour les versions suivantes. Téléchargez puis choisissez Mettre à jour et redémarrer. Fermez d’abord les analyses en cours. Utilisez le portable dans un dossier utilisateur accessible en écriture. L’ancien .exe reste à côté sous un nom .previous-… ; la base SQLite et le coffre ne sont pas remplacés. Si le redémarrage échoue, lancez cette sauvegarde et consultez le message de mise à jour dans Paramètres.
+
+Le bouton Lancer tous les tests est disponible pour le site sélectionné et présente les options du bilan complet.
+
 # Installation et utilisation
 
 ## Application Windows

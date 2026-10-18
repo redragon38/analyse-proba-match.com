@@ -1,3 +1,13 @@
+## Version 0.2.0 — Bilan complet, mises à jour et statistiques
+
+- Bilan groupé avec progression réelle par étape, résultats distincts, poursuite après erreur, annulation des étapes restantes et historique.
+- Recherche de Releases GitHub, téléchargement borné et vérification SHA-256, application au redémarrage du portable Windows avec sauvegarde de l’ancien exécutable. Le remplacement nécessite le portable original dans un dossier accessible en écriture.
+- Source et unité de chaque métrique explicites ; périodes Search Console en heure du Pacifique, pagination symétrique, CTR en points, gains de positions et conservation des résultats GA4 partiels.
+- Interface enrichie : engagement GA4, mesures Lighthouse/CrUX distinctes et indicateurs de crawl.
+- TypeScript et build réussis, 72 tests unitaires/UI et 2 parcours Electron réussis. Tests de téléchargement, empreinte incorrecte, refus des redirections, sélection de version, orchestration, qualité des statistiques et composants UI. Validation native du programme de remplacement Windows en cours via le workflow dédié.
+- Limites : les anciennes versions demandent un premier téléchargement manuel pour bénéficier du nouveau bouton. Exécutables non signés ; les APIs et le remplacement réel d’un portable utilisateur restent à retester sur son poste.
+- Guide : docs/RELEASE_NOTES_0.2.0.md.
+
 ## Correctif 0.1.2 — Résolution réseau du crawler
 
 - Erreur utilisateur « Invalid IP address: undefined » reproduite exactement dans un test avec un vrai client HTTP Node et un serveur local.

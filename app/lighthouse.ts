@@ -101,7 +101,10 @@ export async function auditLighthouse(
           }
         : {}),
     });
-    if (!result) throw Error("Aucun résultat Lighthouse.");
+    if (!result || result.lhr.runtimeError)
+      throw Error(
+        "Lighthouse n’a pas pu analyser cette URL. Vérifiez son accessibilité et le navigateur.",
+      );
     return {
       strategy,
       lhr: result.lhr,

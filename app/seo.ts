@@ -289,6 +289,8 @@ export class Crawler {
             Date.now() - before,
             next.depth,
           );
+          (page as Page & { redirects: string[] }).redirects =
+            response.redirects;
           if (response.redirects.length)
             page.issues.push({
               id: randomUUID(),

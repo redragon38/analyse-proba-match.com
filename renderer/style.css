@@ -1045,3 +1045,47 @@ hr {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+progress {
+  width: 100%;
+  height: 9px;
+  accent-color: #a1e4b9;
+  margin: 10px 0;
+}
+.batch-steps {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+.batch-steps > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.batch-steps small {
+  width: 100%;
+  line-height: 1.6;
+}
+.tag.failed,
+.tag.cancelled {
+  color: #f0aaa0;
+  background: #6c30222a;
+}
+.tag.partial,
+.tag.skipped {
+  color: #e4ca8b;
+  background: #8a66322b;
+}
+.batch-steps strong {
+  font-weight: 500;
+}
+.modal .checkbox {
+  margin: 15px 0;
+}
+.modal .form-grid {
+  margin: 20px 0;
+}

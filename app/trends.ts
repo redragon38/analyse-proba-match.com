@@ -49,15 +49,13 @@ export function parseTrends(text: string) {
     .filter((r) => r.length === headers.length)
     .map((r) => ({
       label: r[0],
-      values: r
-        .slice(1)
-        .map((raw) => ({
-          raw,
-          value:
-            /^\d+(?:\.\d+)?$/.test(raw.trim()) && Number(raw) <= 100
-              ? Number(raw)
-              : null,
-        })),
+      values: r.slice(1).map((raw) => ({
+        raw,
+        value:
+          /^\d+(?:\.\d+)?$/.test(raw.trim()) && Number(raw) <= 100
+            ? Number(raw)
+            : null,
+      })),
     }));
   if (!entries.length)
     throw Error("Le fichier ne contient aucune observation.");

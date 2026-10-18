@@ -1,3 +1,14 @@
+import {
+  SearchMetrics,
+  CollectionQuality,
+  BatchPanel,
+  UpdatePanel,
+  GoogleMetrics,
+  CrawlMetrics,
+  SpeedMetrics,
+  metricValue,
+} from "./Insights";
+import { METRIC_LABELS, googleMetric, metricNumber } from "../app/statistics";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -68,7 +79,7 @@ const navigation = [
 ] as const;
 const date = (s: string) => new Date(s).toLocaleString("fr-FR");
 const number = (n: unknown) =>
-  typeof n === "number"
+  typeof n === "number" && Number.isFinite(n)
     ? n.toLocaleString("fr-FR", { maximumFractionDigits: 2 })
     : "—";
 const emptySite = {
@@ -177,8 +188,17 @@ function App() {
     (r) => r.kind === "alert" && r.data.status === "ouvert",
   ).length;
   const change = (metric: string) => {
-    const n = sync?.data.search?.changes?.[metric];
-    return typeof n === "number"
+    const changes = sync?.data.search?.changes;
+    if (metric === "ctr")
+      return typeof changes?.ctrPoints === "number"
+        ? `${changes.ctrPoints > 0 ? "+" : ""}${number(changes.ctrPoints)} points vs période précédente`
+        : "Comparaison indisponible";
+    if (metric === "position")
+      return typeof changes?.positionDelta === "number"
+        ? `${changes.positionDelta > 0 ? "+" : ""}${number(changes.positionDelta)} positions (positif = amélioration)`
+        : "Comparaison indisponible";
+    const n = changes?.[metric];
+    return typeof n === "number" && Number.isFinite(n)
       ? `${n > 0 ? "+" : ""}${n.toFixed(1)} % vs période précédente`
       : "Comparaison indisponible";
   };
@@ -207,7 +227,7 @@ function App() {
   const button = (label: string, input: Input, primary = false) => (
     <button
       className={primary ? "primary" : ""}
-      disabled={!!busy}
+      disabled={!!busy || !!state?.batch?.running}
       onClick={() => run(label, input)}
     >
       {busy === label ? <Loader2 size={15} className="spin" /> : null}
@@ -217,9 +237,11 @@ function App() {
   function SearchTable({
     rows,
     kind = "search",
+    headers = [],
   }: {
     rows: any[];
     kind?: string;
+    headers?: any[];
   }) {
     const filtered = rows.filter((r) =>
       JSON.stringify(r.keys ?? r.dimensionValues)
@@ -244,7 +266,7 @@ function App() {
                 <th>Dimension</th>
                 {(kind === "search"
                   ? ["Clics", "Impressions", "CTR", "Position moyenne"]
-                  : ["Valeurs (ordre des métriques API)"]
+                  : headers.map((h) => METRIC_LABELS[h.name] ?? h.name)
                 ).map((h) => (
                   <th key={h}>{h}</th>
                 ))}
@@ -265,9 +287,11 @@ function App() {
                       <td>{number(r.position)}</td>
                     </>
                   ) : (
-                    <td>
-                      {r.metricValues?.map((m: any) => m.value).join(" / ")}
-                    </td>
+                    r.metricValues?.map((m: any, j: number) => (
+                      <td key={j}>
+                        {metricValue(headers[j]?.name ?? "", m.value)}
+                      </td>
+                    ))
                   )}
                 </tr>
               ))}
@@ -309,7 +333,7 @@ function App() {
           </p>
           <button
             className="primary"
-            disabled={!site || !!busy}
+            disabled={!site || !!busy || !!state?.batch?.running}
             onClick={() => go("Audit SEO")}
           >
             Explorer mon site <ArrowUpRight size={16} />
@@ -411,15 +435,11 @@ function App() {
           <div className="metrics small">
             <div className="metric">
               <span>Utilisateurs actifs</span>
-              <strong>
-                {ga?.totals?.rows?.[0]?.metricValues?.[0]?.value ?? "—"}
-              </strong>
+              <strong>{number(googleMetric(ga?.totals, "activeUsers"))}</strong>
             </div>
             <div className="metric">
               <span>Sessions</span>
-              <strong>
-                {ga?.totals?.rows?.[0]?.metricValues?.[1]?.value ?? "—"}
-              </strong>
+              <strong>{number(googleMetric(ga?.totals, "sessions"))}</strong>
             </div>
           </div>
         </Card>
@@ -503,7 +523,7 @@ function App() {
         <div className="profile">
           <div className="profile-avatar">S</div>
           <div>
-            Espace personnel<small>SEO Control Studio · 0.1.2</small>
+            Espace personnel<small>SEO Control Studio · 0.2.0</small>
           </div>
           <button
             title="Changer de thème"
@@ -529,6 +549,7 @@ function App() {
             <strong>{section}</strong>
           </div>
           <div className="header-actions">
+            <button onClick={() => go("Paramètres")}>Mises à jour</button>
             <span className="local-badge">
               <span className="dot" /> Local
             </span>
@@ -579,7 +600,7 @@ function App() {
               </select>
               <button
                 className="primary"
-                disabled={!site || !!busy}
+                disabled={!site || !!busy || !!state?.batch?.running}
                 onClick={() =>
                   run("Synchronisation", {
                     action: "sync",
@@ -600,7 +621,7 @@ function App() {
           <div className="freshness">
             <Clock size={13} />
             {sync
-              ? `Dernière synchronisation : ${date(sync.createdAt)} · données jusqu’au ${sync.data.period.end}`
+              ? `Dernière synchronisation : ${date(sync.createdAt)} · période demandée jusqu’au ${sync.data.period.end}`
               : "Aucune synchronisation · aucune statistique estimée"}
             <span>Les services peuvent avoir des délais de disponibilité.</span>
           </div>
@@ -622,6 +643,24 @@ function App() {
               {busy} en cours…
             </div>
           )}
+          {site && state && (
+            <BatchPanel
+              state={state}
+              site={site}
+              records={records}
+              onAction={run}
+              days={days}
+            />
+          )}
+          {sync?.data.errors?.length > 0 && (
+            <div className="notice error">
+              Collecte partielle :{" "}
+              {sync?.data.errors
+                .map((e: any) => `${e.source} : ${e.message}`)
+                .join(" · ")}
+            </div>
+          )}
+          {site && sync && <CollectionQuality sync={sync} />}
           {section === "Vue d’ensemble" && (!site ? siteRequired : overview)}
           {section !== "Vue d’ensemble" && section !== "Paramètres" && !site ? (
             siteRequired
@@ -641,14 +680,7 @@ function App() {
                     ))}
                   {sync?.data.search ? (
                     <>
-                      <div className="metrics">
-                        {Object.entries(metrics ?? {}).map(([k, v]) => (
-                          <div className="metric" key={k}>
-                            <span>{k}</span>
-                            <strong>{number(v)}</strong>
-                          </div>
-                        ))}
-                      </div>
+                      <SearchMetrics totals={metrics} />
                       <div className="tabs">
                         {["queries", "pages", "countries", "devices"].map(
                           (t) => (
@@ -676,11 +708,21 @@ function App() {
                         rows={sync.data.search[filter || "queries"] ?? []}
                       />
                       <Details
-                        title="Comparaisons des requêtes (période précédente limitée aux 1 000 premières lignes)"
+                        title="Couverture de collecte et agrégation"
+                        data={sync.data.search.coverage}
+                      />
+                      <p className="muted">
+                        Les variations du CTR sont en points de pourcentage ;
+                        les gains de position sont des différences de position
+                        moyenne. Une ligne absente des tableaux ne signifie pas
+                        zéro.
+                      </p>
+                      <Details
+                        title="Comparaisons des requêtes — même pagination pour les deux périodes"
                         data={sync.data.search.queryComparisons}
                       />
                       <Details
-                        title="Pages : gains et pertes de clics et de position moyenne (1 000 premières lignes)"
+                        title="Pages : comparaison des clics et positions moyennes, lignes absentes ≠ zéro"
                         data={sync.data.search.pageComparisons}
                       />
                       <p className="muted">
@@ -704,7 +746,7 @@ function App() {
               {section === "Google Analytics" && (
                 <Card
                   title="Audience et acquisition"
-                  subtitle="Google Analytics Data API · 1 000 lignes maximum par tableau"
+                  subtitle="Google Analytics Data API · jusqu’à 10 000 lignes paginées par tableau"
                 >
                   {sync?.data.errors
                     ?.filter((e: any) => e.source === "GA4")
@@ -715,22 +757,7 @@ function App() {
                     ))}
                   {ga ? (
                     <>
-                      <div className="metrics">
-                        {ga.totals.metricHeaders.map((h: any, i: number) => (
-                          <div className="metric" key={h.name}>
-                            <span>{h.name}</span>
-                            <strong>
-                              {ga.totals.rows?.[0]?.metricValues[i]?.value ??
-                                "—"}
-                            </strong>
-                            <small>
-                              Précédent :{" "}
-                              {ga.previous.rows?.[0]?.metricValues[i]?.value ??
-                                "—"}
-                            </small>
-                          </div>
-                        ))}
-                      </div>
+                      <GoogleMetrics data={ga} />
                       <div className="tabs">
                         {[
                           "pages",
@@ -770,6 +797,7 @@ function App() {
                       <SearchTable
                         rows={ga[filter || "pages"]?.rows ?? []}
                         kind="ga"
+                        headers={ga[filter || "pages"]?.metricHeaders ?? []}
                       />
                       <Details
                         title="Qualité des données, quotas et métadonnées"
@@ -777,6 +805,7 @@ function App() {
                           metadata: ga[filter || "pages"]?.metadata,
                           quota: ga[filter || "pages"]?.propertyQuota,
                           rowCount: ga[filter || "pages"]?.rowCount,
+                          coverage: ga[filter || "pages"]?.coverage,
                         }}
                       />
                     </>
@@ -826,13 +855,15 @@ function App() {
                             <div className="metric" key={key}>
                               <span>{v.title}</span>
                               <strong>
-                                {v.score === null
+                                {typeof v.score !== "number" ||
+                                !Number.isFinite(v.score)
                                   ? "—"
                                   : Math.round(v.score * 100)}
                               </strong>
                             </div>
                           ))}
                         </div>
+                        <SpeedMetrics data={currentPS.data} />
                         <Details
                           title="Laboratoire Lighthouse : mesures et diagnostics"
                           data={currentPS.data.lab?.audits}
@@ -968,6 +999,7 @@ function App() {
                   </Card>
                   {crawl && (
                     <>
+                      <CrawlMetrics data={crawl.data} />
                       <div className="metrics">
                         {[
                           ["Pages", crawl.data.pages.length],
@@ -1088,7 +1120,10 @@ function App() {
                         placeholder={site.url}
                       />
                     </label>
-                    <button className="primary" disabled={!!busy}>
+                    <button
+                      className="primary"
+                      disabled={!!busy || !!state?.batch?.running}
+                    >
                       Inspecter l’URL
                     </button>
                   </form>
@@ -1150,7 +1185,10 @@ function App() {
                         value={value}
                         onChange={(e) => setValue(e.target.value)}
                       />
-                      <button className="primary" disabled={!!busy}>
+                      <button
+                        className="primary"
+                        disabled={!!busy || !!state?.batch?.running}
+                      >
                         <Plus size={15} /> Ajouter
                       </button>
                     </form>
@@ -1197,7 +1235,9 @@ function App() {
                                   <td>
                                     {section === "Concurrents" && (
                                       <button
-                                        disabled={!!busy}
+                                        disabled={
+                                          !!busy || !!state?.batch?.running
+                                        }
                                         onClick={() =>
                                           run("Analyse concurrent", {
                                             action: "competitor.audit",
@@ -1273,6 +1313,10 @@ function App() {
                             <p className="muted">{r.data.parsed.warnings}</p>
                             {r.data.parsed.temporal && (
                               <Chart
+                                label={
+                                  r.data.parsed.headers[1] ??
+                                  "Indice Google Trends"
+                                }
                                 data={r.data.parsed.entries
                                   .filter(
                                     (e: any) => e.values[0]?.value !== null,
@@ -1383,7 +1427,7 @@ function App() {
                     {(["pdf", "xlsx", "csv", "html", "json"] as const).map(
                       (format) => (
                         <button
-                          disabled={!!busy}
+                          disabled={!!busy || !!state?.batch?.running}
                           key={format}
                           onClick={() =>
                             run(`Export ${format}`, {
@@ -1464,6 +1508,9 @@ function App() {
           )}
           {section === "Paramètres" && settings && (
             <>
+              {state && (
+                <UpdatePanel state={state} onAction={run} busy={!!busy} />
+              )}
               <Card
                 title="Vos sites"
                 subtitle="Données et historique séparés pour chaque site."
@@ -1558,7 +1605,7 @@ function App() {
                   })}
                   <button
                     className="primary"
-                    disabled={!!busy}
+                    disabled={!!busy || !!state?.batch?.running}
                     onClick={async () => {
                       const saved = await run("Enregistrement", {
                         action: "settings.save",
@@ -1574,7 +1621,7 @@ function App() {
                     action: "google.disconnect",
                   })}
                   <button
-                    disabled={!!busy}
+                    disabled={!!busy || !!state?.batch?.running}
                     onClick={async () =>
                       setProps(
                         await run("Propriétés Google", {
@@ -1702,7 +1749,10 @@ function App() {
                     />{" "}
                     Démarrer avec Windows (à vérifier sous Windows)
                   </label>
-                  <button className="primary" disabled={!!busy}>
+                  <button
+                    className="primary"
+                    disabled={!!busy || !!state?.batch?.running}
+                  >
                     Enregistrer les préférences
                   </button>
                 </form>
@@ -1734,7 +1784,9 @@ function App() {
                     onChange={(e) => setSecret(e.target.value)}
                     placeholder="Vide pour supprimer la clé"
                   />
-                  <button disabled={!!busy}>Enregistrer dans le coffre</button>
+                  <button disabled={!!busy || !!state?.batch?.running}>
+                    Enregistrer dans le coffre
+                  </button>
                 </form>
                 <p className="muted">
                   Clé PageSpeed :{" "}
@@ -1822,7 +1874,10 @@ function App() {
                 <button type="button" onClick={() => setSiteForm(undefined)}>
                   Annuler
                 </button>
-                <button className="primary" disabled={!!busy}>
+                <button
+                  className="primary"
+                  disabled={!!busy || !!state?.batch?.running}
+                >
                   Enregistrer le site
                 </button>
               </div>
@@ -1938,7 +1993,13 @@ function Details({ title, data }: { title: string; data: unknown }) {
     </details>
   );
 }
-function Chart({ data }: { data: { date: string; value: number }[] }) {
+function Chart({
+  data,
+  label = "Clics",
+}: {
+  data: { date: string; value: number }[];
+  label?: string;
+}) {
   return (
     <div className="chart">
       <ResponsiveContainer width="100%" height={240}>
@@ -1960,7 +2021,7 @@ function Chart({ data }: { data: { date: string; value: number }[] }) {
           />
           <Line
             dataKey="value"
-            name="Clics"
+            name={label}
             type="monotone"
             stroke="#8cdcaf"
             strokeWidth={2}

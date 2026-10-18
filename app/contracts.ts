@@ -1,3 +1,5 @@
+import type { BatchState } from "./batch";
+import type { UpdateState } from "./updater";
 import { z } from "zod";
 export const SiteInput = z
   .object({
@@ -71,6 +73,19 @@ export const SettingsInput = z
   })
   .strict();
 export const Request = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("audit.all"),
+    siteId: z.string().uuid(),
+    days: z.number().int().min(1).max(365),
+    maxPages: z.number().int().min(1).max(500),
+    delay: z.number().int().min(200).max(10000),
+    includeLighthouse: z.boolean(),
+    includeCompetitors: z.boolean(),
+  }),
+  z.object({ action: z.literal("audit.cancel") }),
+  z.object({ action: z.literal("update.check") }),
+  z.object({ action: z.literal("update.download") }),
+  z.object({ action: z.literal("update.install") }),
   z.object({ action: z.literal("state") }),
   z.object({
     action: z.literal("site.save"),
@@ -172,6 +187,8 @@ export const Request = z.discriminatedUnion("action", [
 ]);
 export type Input = z.infer<typeof Request>;
 export type State = {
+  batch: BatchState;
+  updater: UpdateState;
   sites: Site[];
   records: RecordData[];
   lists: { id: string; siteId: string; kind: string; value: string }[];

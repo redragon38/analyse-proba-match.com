@@ -1,6 +1,6 @@
 {
   "name": "seo-control-studio",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Studio SEO local pour Windows \u2014 sources Google et audits techniques",
   "main": "dist-electron/main.js",
   "scripts": {
