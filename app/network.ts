@@ -2,6 +2,21 @@ import dns from "node:dns/promises";
 import https from "node:https";
 import http from "node:http";
 import net from "node:net";
+// The address must come from resolvePublic in production. Returning one pinned
+// address prevents a second DNS resolution between validation and connection.
+export function createPinnedLookup(address: {
+  address: string;
+  family: number;
+}): net.LookupFunction {
+  const family = net.isIP(address.address);
+  if (!family || family !== address.family)
+    throw Error("Adresse IP résolue invalide.");
+  const pinned = { address: address.address, family };
+  return (_hostname, options, callback) => {
+    if (options.all) callback(null, [pinned]);
+    else callback(null, pinned.address, pinned.family);
+  };
+}
 export function publicAddress(ip: string): boolean {
   if (net.isIPv4(ip)) {
     const [a, b, c] = ip.split(".").map(Number);
@@ -84,7 +99,7 @@ export async function fetchPublic(
           "User-Agent": "SEOControlStudio/0.1 (+authorized SEO audit)",
           Accept: "text/html,application/xml,text/plain;q=0.9",
         },
-        lookup: (_h, _o, cb) => cb(null, address.address, address.family),
+        lookup: createPinnedLookup(address),
         signal: options.signal,
       },
       (res) => {
@@ -160,7 +175,7 @@ export async function postPublicJSON(
       {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        lookup: (_h, _o, cb) => cb(null, address.address, address.family),
+        lookup: createPinnedLookup(address),
       },
       (res) => {
         let size = 0;

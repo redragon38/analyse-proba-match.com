@@ -1,3 +1,12 @@
+## Correctif 0.1.2 — Résolution réseau du crawler
+
+- Erreur utilisateur « Invalid IP address: undefined » reproduite exactement dans un test avec un vrai client HTTP Node et un serveur local.
+- Cause : callback DNS scalaire alors que Node demandait une liste avec all:true.
+- Adaptateur partagé corrigé dans le crawler, le client JSON public et le proxy HTTP Lighthouse. Validation préalable des IP et épinglage DNS conservés.
+- Tests : formats IPv4/IPv6, format scalaire, vraie connexion HTTP avec sélection automatique des familles et refus SSRF des résolutions privées/mixtes.
+- Validation du correctif : TypeScript, build, 51 tests unitaires/intégration et 2 parcours Electron réussis.
+- Pas de modification de la configuration Google ni des données utilisateur. Audit public sur le PC de l’utilisateur à retester.
+
 ## Correctif 0.1.1 — OAuth Google
 
 - Erreur signalée par l’utilisateur : retour dans l’application après consentement Google, puis HTTP 400 générique. Cause exacte non accessible dans la version initiale.

@@ -503,7 +503,7 @@ function App() {
         <div className="profile">
           <div className="profile-avatar">S</div>
           <div>
-            Espace personnel<small>SEO Control Studio · 0.1.1</small>
+            Espace personnel<small>SEO Control Studio · 0.1.2</small>
           </div>
           <button
             title="Changer de thème"

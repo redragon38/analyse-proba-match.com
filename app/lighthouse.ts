@@ -1,6 +1,6 @@
 import http from "node:http";
 import net from "node:net";
-import { resolvePublic } from "./network";
+import { resolvePublic, createPinnedLookup } from "./network";
 import lighthouse from "lighthouse";
 import { launch } from "chrome-launcher";
 // Chromium sends requests through this local gateway. Every destination is
@@ -21,7 +21,7 @@ export async function auditLighthouse(
         {
           method: req.method,
           headers: { ...req.headers, host: u.host },
-          lookup: (_h, _o, cb) => cb(null, address.address, address.family),
+          lookup: createPinnedLookup(address),
         },
         (r) => {
           res.writeHead(r.statusCode ?? 502, r.headers);
