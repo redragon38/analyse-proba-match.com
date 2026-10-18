@@ -23,3 +23,5 @@ Les exécutables sont non signés. SHA-256 contrôle l’intégrité du téléch
 - Panneau de qualité : dates, fuseaux, couverture, seuils de confidentialité et limitations. Les chiffres absents ne sont pas remplacés par des données fictives.
 
 Aucune garantie d’exactitude exhaustive ou de classement SEO : les APIs Google ont leurs propres limites, délais et quotas. Aucun compte ni aucune clé de l’utilisateur n’ont été utilisés pour la validation automatisée.
+
+Validation : 73 tests unitaires/UI, TypeScript, compilation et 2 parcours Electron sous Linux réussis. Le programme de remplacement a été exécuté sur Windows : remplacement après fermeture du processus parent, sauvegarde de l’ancien exécutable et refus d’une empreinte incorrecte. Le workflow UI Windows général échoue encore sur un délai de clic ; une validation complète sur le poste utilisateur reste nécessaire.

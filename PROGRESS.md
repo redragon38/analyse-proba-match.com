@@ -4,7 +4,7 @@
 - Recherche de Releases GitHub, téléchargement borné et vérification SHA-256, application au redémarrage du portable Windows avec sauvegarde de l’ancien exécutable. Le remplacement nécessite le portable original dans un dossier accessible en écriture.
 - Source et unité de chaque métrique explicites ; périodes Search Console en heure du Pacifique, pagination symétrique, CTR en points, gains de positions et conservation des résultats GA4 partiels.
 - Interface enrichie : engagement GA4, mesures Lighthouse/CrUX distinctes et indicateurs de crawl.
-- TypeScript et build réussis, 72 tests unitaires/UI et 2 parcours Electron réussis. Tests de téléchargement, empreinte incorrecte, refus des redirections, sélection de version, orchestration, qualité des statistiques et composants UI. Validation native du programme de remplacement Windows en cours via le workflow dédié.
+- TypeScript et build réussis, 73 tests unitaires/UI et 2 parcours Electron réussis. Tests de téléchargement, empreinte incorrecte, refus des redirections, sélection de version, orchestration, qualité des statistiques et composants UI. Validation native Windows réussie : remplacement après fermeture du parent, sauvegarde de l’ancien exécutable et refus d’une empreinte incorrecte, y compris dans un chemin avec espaces, accent et apostrophe. Le workflow Windows UI général conserve un échec de délai sur clic ; les deux parcours Electron réussis sont exécutés sous Linux.
 - Limites : les anciennes versions demandent un premier téléchargement manuel pour bénéficier du nouveau bouton. Exécutables non signés ; les APIs et le remplacement réel d’un portable utilisateur restent à retester sur son poste.
 - Guide : docs/RELEASE_NOTES_0.2.0.md.
 
