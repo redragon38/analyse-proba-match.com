@@ -211,8 +211,14 @@ $ErrorActionPreference = 'Stop'
 $c = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $backup = [IO.Path]::ChangeExtension($c.target, '.previous-' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmssfff') + '.exe')
 $moved = $false
+function FileHash([string]$Path) {
+  $stream = [IO.File]::OpenRead($Path)
+  $sha = [Security.Cryptography.SHA256]::Create()
+  try { return [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+  finally { $sha.Dispose(); $stream.Dispose() }
+}
 try {
-  if ((Get-FileHash -LiteralPath $c.staged -Algorithm SHA256).Hash.ToLowerInvariant() -ne $c.hash) { throw 'Empreinte de mise à jour invalide.' }
+  if ((FileHash $c.staged) -ne $c.hash) { throw 'Empreinte de mise à jour invalide.' }
   @{ready=$true} | ConvertTo-Json | Set-Content -LiteralPath $c.ready -Encoding UTF8
   if (Get-Process -Id $c.pid -ErrorAction SilentlyContinue) { Wait-Process -Id $c.pid -Timeout 60 -ErrorAction SilentlyContinue }
   if (Get-Process -Id $c.pid -ErrorAction SilentlyContinue) { throw 'Application encore active : remplacement annulé.' }
@@ -220,7 +226,7 @@ try {
     try { Move-Item -LiteralPath $c.target -Destination $backup -ErrorAction Stop; $moved=$true; break } catch { if ($i -eq 29) { throw }; Start-Sleep -Seconds 1 }
   }
   Move-Item -LiteralPath $c.staged -Destination $c.target -ErrorAction Stop
-  if ((Get-FileHash -LiteralPath $c.target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $c.hash) { throw 'Vérification après remplacement échouée.' }
+  if ((FileHash $c.target) -ne $c.hash) { throw 'Vérification après remplacement échouée.' }
   @{ok=$true;version=$c.version} | ConvertTo-Json | Set-Content -LiteralPath $c.result -Encoding UTF8
   Start-Process -FilePath $c.target
 } catch {
