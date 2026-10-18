@@ -272,6 +272,7 @@ export async function launchPortableUpdate(
     }),
     "utf8",
   );
+  let exitCode: number | null | undefined;
   const log = await open(join(directory, "update-helper.log"), "a");
   try {
     await new Promise<void>((resolve, reject) => {
@@ -294,6 +295,9 @@ export async function launchPortableUpdate(
           cwd: directory,
         },
       );
+      child.once("exit", (code) => {
+        exitCode = code;
+      });
       child.once("error", reject);
       child.once("spawn", () => {
         child.unref();
@@ -317,6 +321,10 @@ export async function launchPortableUpdate(
     } catch (e) {
       if (e instanceof Error && !("code" in e)) throw e;
     }
+    if (exitCode !== undefined)
+      throw Error(
+        `Le programme de mise à jour s’est arrêté avant sa confirmation (code ${exitCode}). Consultez update-helper.log.`,
+      );
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   throw Error(

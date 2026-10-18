@@ -1,4 +1,5 @@
 import { build } from "esbuild";
+import { execFileSync } from "node:child_process";
 import {
   mkdtemp,
   copyFile,
@@ -13,6 +14,14 @@ import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 if (process.platform !== "win32") throw Error("Ce contrôle nécessite Windows.");
+console.log(
+  "PowerShell health:",
+  execFileSync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", 'Write-Output "PS-ready"'],
+    { encoding: "utf8", timeout: 15000 },
+  ),
+);
 const root = await mkdtemp(join(tmpdir(), "seo-update-é-' "));
 const hash = async (file) =>
   createHash("sha256")
