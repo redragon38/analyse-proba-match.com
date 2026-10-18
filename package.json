@@ -1,0 +1,120 @@
+{
+  "name": "seo-control-studio",
+  "version": "0.1.0",
+  "description": "Studio SEO local pour Windows — sources Google et audits techniques",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "npm run build:electron && concurrently -k \"vite\" \"wait-on http://127.0.0.1:5173 && cross-env STUDIO_DEV=1 electron .\"",
+    "build:electron": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build && npm run build:electron",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "start": "electron .",
+    "dist:win": "npm run build && electron-builder --win nsis portable --x64",
+    "dist:linux": "npm run build && electron-builder --linux dir",
+    "verify": "npm run typecheck && npm test && npm run build",
+    "format": "prettier --write app renderer tests scripts *.ts *.json *.md .github/workflows/*.yml",
+    "format:check": "prettier --check app renderer tests scripts *.ts *.json *.md .github/workflows/*.yml"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/redragon38/analyse-proba-match.com.git"
+  },
+  "keywords": [],
+  "author": "SEO Control Studio",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/redragon38/analyse-proba-match.com/issues"
+  },
+  "homepage": "https://github.com/redragon38/analyse-proba-match.com#readme",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "chrome-launcher": "^1.2.2",
+    "exceljs": "^4.4.0",
+    "lighthouse": "^13.5.0",
+    "lucide-react": "^1.59.0",
+    "pdfkit": "^0.20.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "recharts": "^3.10.1",
+    "robots-parser": "^3.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^24.19.2",
+    "@types/pdfkit": "^0.17.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^42.11.15",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.3",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.5",
+    "wait-on": "^9.5.1"
+  },
+  "build": {
+    "appId": "com.seocontrolstudio.app",
+    "productName": "SEO Control Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "SEO-Control-Studio-${version}-Setup.${ext}",
+      "signAndEditExecutable": true,
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "target": "dir",
+      "category": "Development"
+    },
+    "portable": {
+      "artifactName": "SEO-Control-Studio-${version}-Portable.${ext}"
+    }
+  },
+  "overrides": {
+    "uuid": "^11.1.1",
+    "sprintf-js": "^1.1.3"
+  },
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "npm": ">=11 <12"
+  }
+}
