@@ -292,11 +292,17 @@ export async function launchPortableUpdate(
           "RemoteSigned",
           "-EncodedCommand",
           Buffer.from(
-            "$parameters = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" +
-              Buffer.from(JSON.stringify({ script, config }), "utf8").toString(
-                "base64",
-              ) +
-              "')) | ConvertFrom-Json; & $parameters.script -ConfigPath $parameters.config",
+            "Start-Process -FilePath ([IO.Path]::Combine($PSHOME, 'powershell.exe')) -WindowStyle Hidden -ArgumentList @('-NoProfile','-NonInteractive','-ExecutionPolicy','RemoteSigned','-EncodedCommand','" +
+              Buffer.from(
+                "$parameters = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" +
+                  Buffer.from(
+                    JSON.stringify({ script, config }),
+                    "utf8",
+                  ).toString("base64") +
+                  "')) | ConvertFrom-Json; & $parameters.script -ConfigPath $parameters.config",
+                "utf16le",
+              ).toString("base64") +
+              "')",
             "utf16le",
           ).toString("base64"),
         ],
@@ -336,7 +342,7 @@ export async function launchPortableUpdate(
         "Le programme Windows a refusé la mise à jour : " +
           String(result.message ?? "cause inconnue").slice(0, 500),
       );
-    if (exitCode !== undefined) {
+    if (exitCode !== undefined && exitCode !== 0) {
       try {
         await access(ready);
         await rm(ready, { force: true });
