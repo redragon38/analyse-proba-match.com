@@ -55,14 +55,23 @@ try {
     await copyFile(replacement, staged);
     const oldHash = await hash(target);
     const newHash = await hash(staged);
-    await launchPortableUpdate(
-      target,
-      staged,
-      valid ? newHash : "0".repeat(64),
-      "0.2.1",
-      dir,
-      2147483646,
-    );
+    try {
+      await launchPortableUpdate(
+        target,
+        staged,
+        valid ? newHash : "0".repeat(64),
+        "0.2.1",
+        dir,
+        2147483646,
+      );
+    } catch (e) {
+      console.error(
+        await readFile(join(dir, "update-helper.log"), "utf8").catch(
+          () => "(journal absent)",
+        ),
+      );
+      if (valid) throw e;
+    }
     const result = await waitResult(join(dir, "install-result.json"));
     assert.equal(result.ok, valid);
     assert.equal(await hash(target), valid ? newHash : oldHash);

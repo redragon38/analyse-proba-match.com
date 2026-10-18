@@ -213,6 +213,7 @@ $backup = [IO.Path]::ChangeExtension($c.target, '.previous-' + [DateTime]::UtcNo
 $moved = $false
 try {
   if ((Get-FileHash -LiteralPath $c.staged -Algorithm SHA256).Hash.ToLowerInvariant() -ne $c.hash) { throw 'Empreinte de mise à jour invalide.' }
+  @{ready=$true} | ConvertTo-Json | Set-Content -LiteralPath $c.ready -Encoding UTF8
   if (Get-Process -Id $c.pid -ErrorAction SilentlyContinue) { Wait-Process -Id $c.pid -Timeout 60 -ErrorAction SilentlyContinue }
   for ($i=0; $i -lt 30; $i++) {
     try { Move-Item -LiteralPath $c.target -Destination $backup -ErrorAction Stop; $moved=$true; break } catch { if ($i -eq 29) { throw }; Start-Sleep -Seconds 1 }
@@ -254,6 +255,9 @@ export async function launchPortableUpdate(
   await mkdir(directory, { recursive: true });
   const script = join(directory, "apply-update.ps1");
   const config = join(directory, "apply-update.json");
+  const ready = join(directory, `ready-${Date.now()}.json`);
+  const resultFile = join(directory, "install-result.json");
+  await rm(resultFile, { force: true });
   await writeFile(script, "\uFEFF" + INSTALL_SCRIPT, "utf8");
   await writeFile(
     config,
@@ -263,7 +267,8 @@ export async function launchPortableUpdate(
       hash,
       version,
       pid,
-      result: join(directory, "install-result.json"),
+      result: resultFile,
+      ready,
     }),
     "utf8",
   );
@@ -298,6 +303,25 @@ export async function launchPortableUpdate(
   } finally {
     await log.close();
   }
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try {
+      await access(ready);
+      await rm(ready, { force: true });
+      return;
+    } catch {}
+    try {
+      await access(resultFile);
+      throw Error(
+        "Le programme Windows a refusé la mise à jour. L’application reste ouverte ; consultez update-helper.log dans le dossier updates.",
+      );
+    } catch (e) {
+      if (e instanceof Error && !("code" in e)) throw e;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw Error(
+    "Le programme de mise à jour Windows n’a pas confirmé son démarrage. L’application reste ouverte ; consultez update-helper.log dans le dossier updates.",
+  );
 }
 export class UpdateManager {
   state: UpdateState;
